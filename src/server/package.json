@@ -1,0 +1,117 @@
+
+{
+  "name": "e-commerce-api",
+  "version": "1.0.0",
+  "description": "Backend API for e-commerce application",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
+    "joi": "^17.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
+</lov-add-dependency>joi@17.10.0</lov-add-dependency>
+
+Let's create a validation schema file for our models:
+
+<lov-write file_path="src/server/models/schemas.js">
+const Joi = require('joi');
+
+// Product validation schema
+const productSchema = Joi.object({
+  name: Joi.string().required(),
+  description: Joi.string().required(),
+  price: Joi.number().positive().required(),
+  discountPrice: Joi.number().positive().allow(null),
+  discountPercentage: Joi.number().min(0).max(100).allow(null),
+  stock: Joi.number().integer().min(0).required(),
+  category: Joi.string().required(),
+  image: Joi.string().required(),
+  rating: Joi.number().min(0).max(5).allow(null),
+  reviews: Joi.number().integer().min(0).allow(null),
+  featured: Joi.boolean().default(false),
+  specifications: Joi.object().pattern(
+    Joi.string(), 
+    Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean())
+  )
+});
+
+// Cart item validation schema
+const cartItemSchema = Joi.object({
+  id: Joi.number().required(),
+  name: Joi.string().required(),
+  price: Joi.number().positive().required(),
+  image: Joi.string().required(),
+  quantity: Joi.number().integer().min(1).required()
+});
+
+// Promotion validation schema
+const promotionSchema = Joi.object({
+  code: Joi.string().required(),
+  title: Joi.string().required(),
+  description: Joi.string().required(),
+  discountType: Joi.string().valid('percentage', 'fixed').required(),
+  discountValue: Joi.number().positive().required(),
+  minimumPurchase: Joi.number().min(0).allow(null),
+  validUntil: Joi.date().iso().greater('now').required(),
+  appliesTo: Joi.string().valid('all', 'category', 'products').required(),
+  categoryName: Joi.when('appliesTo', {
+    is: 'category',
+    then: Joi.string().required(),
+    otherwise: Joi.string().allow(null, '')
+  }),
+  products: Joi.when('appliesTo', {
+    is: 'products',
+    then: Joi.array().items(Joi.object({
+      id: Joi.number().required()
+    })).min(1).required(),
+    otherwise: Joi.array().allow(null)
+  })
+});
+
+// Shipping information validation schema
+const shippingInfoSchema = Joi.object({
+  fullName: Joi.string().required(),
+  address: Joi.string().required(),
+  city: Joi.string().required(),
+  state: Joi.string().required(),
+  zipCode: Joi.string().required(),
+  country: Joi.string().required(),
+  phone: Joi.string().required()
+});
+
+// Payment information validation schema
+const paymentInfoSchema = Joi.object({
+  cardNumber: Joi.string().pattern(/^[0-9]{16}$/).required(),
+  cardName: Joi.string().required(),
+  expiryMonth: Joi.number().integer().min(1).max(12).required(),
+  expiryYear: Joi.number().integer().min(new Date().getFullYear()).required(),
+  cvv: Joi.string().pattern(/^[0-9]{3,4}$/).required(),
+  paymentMethod: Joi.string().valid('credit_card', 'paypal').default('credit_card')
+});
+
+// Order validation schema
+const orderSchema = Joi.object({
+  userId: Joi.string().required(),
+  items: Joi.array().items(cartItemSchema).min(1).required(),
+  shippingInfo: shippingInfoSchema.required(),
+  paymentInfo: paymentInfoSchema.required()
+});
+
+module.exports = {
+  productSchema,
+  cartItemSchema,
+  promotionSchema,
+  shippingInfoSchema,
+  paymentInfoSchema,
+  orderSchema
+};
